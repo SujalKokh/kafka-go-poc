@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -9,7 +10,7 @@ import (
 )
 
 func main() {
-	producer()
+	consumer()
 }
 
 func producer() {
@@ -21,18 +22,14 @@ func producer() {
 		Balancer: &kafka.LeastBytes{},
 	}
 
+	data := map[string]string{"username": "username", "password": "password"}
+	jsonValue, _ := json.Marshal(data)
+
 	err := w.WriteMessages(context.Background(),
+
 		kafka.Message{
 			Key:   []byte("key"),
-			Value: []byte("value"),
-		},
-		kafka.Message{
-			Key:   []byte("Key-B"),
-			Value: []byte("One!"),
-		},
-		kafka.Message{
-			Key:   []byte("Key-C"),
-			Value: []byte("Two!"),
+			Value: []byte(jsonValue),
 		},
 	)
 	if err != nil {
@@ -56,11 +53,13 @@ func consumer() {
 	// r.SetOffset(0)
 
 	for {
+		var message map[string]interface{}
 		m, err := r.ReadMessage(context.Background())
 		if err != nil {
 			break
 		}
-		fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), string(m.Value))
+		json.Unmarshal(m.Value, &message)
+		fmt.Printf("message at offset %d: %s = %s\n", m.Offset, string(m.Key), message["username"])
 	}
 
 	if err := r.Close(); err != nil {
